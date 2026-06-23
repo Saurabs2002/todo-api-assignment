@@ -40,7 +40,7 @@ jobs:
 
     # 5. Build Docker image
     - name: Build Docker image
-      run: docker build -t $ECR_REPOSITORY .
+      run: docker build -t $ECR_REPOSITORY -f todo-api/Dockerfile todo-api/
 
     # 6. Tag Docker image
     - name: Tag Docker image
