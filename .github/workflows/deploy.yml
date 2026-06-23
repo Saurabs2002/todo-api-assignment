@@ -9,10 +9,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      ECR_REPOSITORY: todo-app
+
     steps:
+
+    # 1. Checkout code
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # 2. Configure AWS credentials
     - name: Configure AWS
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -20,22 +28,31 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
+    # 3. Verify AWS login (DEBUG STEP)
+    - name: Verify AWS identity
+      run: aws sts get-caller-identity
+
+    # 4. Login to Amazon ECR
     - name: Login to ECR
       run: |
         aws ecr get-login-password --region $AWS_REGION | \
         docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
+    # 5. Build Docker image
     - name: Build Docker image
-      run: docker build -t todo-app .
+      run: docker build -t $ECR_REPOSITORY .
 
-    - name: Tag image
+    # 6. Tag Docker image
+    - name: Tag Docker image
       run: |
-        docker tag todo-app:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/todo-app:latest
+        docker tag $ECR_REPOSITORY:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
+    # 7. Push image to ECR
     - name: Push image to ECR
       run: |
-        docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/todo-app:latest
+        docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
+    # 8. Deploy to ECS
     - name: Deploy to ECS
       run: |
         aws ecs update-service \
